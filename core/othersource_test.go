@@ -5,13 +5,13 @@ import "testing"
 var domain = "yahoo.com"
 
 func TestOtherSources(t *testing.T) {
-	urls := OtherSources(domain, false)
+	urls := OtherSources(domain, false,1)
 	t.Log(len(urls))
 	t.Log(urls)
 }
 
 func TestGetCommonCrawlURLs(t *testing.T) {
-	urls, err := getCommonCrawlURLs(domain, false)
+	urls, err := getCommonCrawlURLs(domain, false,1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -20,7 +20,7 @@ func TestGetCommonCrawlURLs(t *testing.T) {
 }
 
 func TestGetVirusTotalURLs(t *testing.T) {
-	urls, err := getVirusTotalURLs(domain, false)
+	urls, err := getVirusTotalURLs(domain, false,1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -29,7 +29,7 @@ func TestGetVirusTotalURLs(t *testing.T) {
 }
 
 func TestGetWaybackURLs(t *testing.T) {
-	urls, err := getWaybackURLs(domain, false)
+	urls, err := getWaybackURLs(domain, false,1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,7 +38,7 @@ func TestGetWaybackURLs(t *testing.T) {
 }
 
 func TestGetOtxUrls(t *testing.T) {
-	urls, err := getOtxUrls(domain, false)
+	urls, err := getOtxUrls(domain, false,1)
 	if err != nil {
 		t.Fatal(err)
 	}

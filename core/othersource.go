@@ -6,11 +6,51 @@ import (
     "fmt"
     "io/ioutil"
     "net/http"
+    "net/url"
+	"sort"
     "os"
     "sync"
 )
 
-func OtherSources(domain string, includeSubs bool) []string {
+var otxMaxPages = 15
+
+func getHash(urlStr string) string {
+	var hash string
+	u, err := url.Parse(urlStr)
+	if err == nil {
+		hash += u.Scheme + ":" + u.Host + ":"
+		m, _ := url.ParseQuery(u.RawQuery)
+
+		if len(m) > 0 {
+			keys := make([]string, 0, len(m))
+			for k := range m {
+				keys = append(keys, k)
+			}
+			sort.Strings(keys)
+			for _, k := range keys {
+				hash += k + ":"
+			}
+		}
+
+	}
+	return hash
+}
+func filterUrls(urls []string) []string {
+	var list []string
+	keys := make(map[string]bool)
+	for _, url := range urls {
+		var hash = getHash(url)
+		if _, value := keys[hash]; !value {
+			keys[hash] = true
+			list = append(list, url)
+		}
+	}
+	fmt.Println("Filtered %d %d", len(urls), len(list))
+	return list
+
+}
+
+func OtherSources(domain string, includeSubs bool,fromYear int) []string {
     noSubs := true
     if includeSubs {
         noSubs = false
@@ -32,7 +72,7 @@ func OtherSources(domain string, includeSubs bool) []string {
         fetch := fn
         go func() {
             defer wg.Done()
-            resp, err := fetch(domain, noSubs)
+            resp, err := fetch(domain, noSubs,fromYear)
             if err != nil {
                 return
             }
@@ -50,7 +90,7 @@ func OtherSources(domain string, includeSubs bool) []string {
             urls = append(urls, w.url)
         }
     }
-    return Unique(urls)
+    return filterUrls(urls)
 }
 
 type wurl struct {
@@ -58,15 +98,15 @@ type wurl struct {
     url  string
 }
 
-type fetchFn func(string, bool) ([]wurl, error)
+type fetchFn func(string, bool,int) ([]wurl, error)
 
-func getWaybackURLs(domain string, noSubs bool) ([]wurl, error) {
+func getWaybackURLs(domain string, noSubs bool,fromYear int) ([]wurl, error) {
     subsWildcard := "*."
     if noSubs {
         subsWildcard = ""
     }
     res, err := http.Get(
-        fmt.Sprintf("http://web.archive.org/cdx/search/cdx?url=%s%s/*&output=json&collapse=urlkey", subsWildcard, domain),
+        fmt.Sprintf("http://web.archive.org/cdx/search/cdx?url=%s%s/*&output=json&collapse=urlkey&filter=statuscode:200|302|204&from=%d", subsWildcard, domain, fromYear),
     )
     if err != nil {
         return []wurl{}, err
@@ -99,13 +139,13 @@ func getWaybackURLs(domain string, noSubs bool) ([]wurl, error) {
 
 }
 
-func getCommonCrawlURLs(domain string, noSubs bool) ([]wurl, error) {
+func getCommonCrawlURLs(domain string, noSubs bool,fromYear int) ([]wurl, error) {
     subsWildcard := "*."
     if noSubs {
         subsWildcard = ""
     }
     res, err := http.Get(
-        fmt.Sprintf("http://index.commoncrawl.org/CC-MAIN-2019-51-index?url=%s%s/*&output=json", subsWildcard, domain),
+        fmt.Sprintf("http://index.commoncrawl.org/CC-MAIN-2019-51-index?url=%s%s/*&output=json&filter=status:200&from=%d", subsWildcard, domain, fromYear),
     )
     if err != nil {
         return []wurl{}, err
@@ -134,7 +174,7 @@ func getCommonCrawlURLs(domain string, noSubs bool) ([]wurl, error) {
 
 }
 
-func getVirusTotalURLs(domain string, noSubs bool) ([]wurl, error) {
+func getVirusTotalURLs(domain string, noSubs bool,fromYear int) ([]wurl, error) {
     out := make([]wurl, 0)
 
     apiKey := os.Getenv("VT_API_KEY")
@@ -172,7 +212,7 @@ func getVirusTotalURLs(domain string, noSubs bool) ([]wurl, error) {
     return out, nil
 }
 
-func getOtxUrls(domain string, noSubs bool) ([]wurl, error) {
+func getOtxUrls(domain string, noSubs bool,fromYear int) ([]wurl, error) {
     var urls []wurl
     page := 0
     for {
@@ -209,6 +249,9 @@ func getOtxUrls(domain string, noSubs bool) ([]wurl, error) {
         if !wrapper.HasNext {
             break
         }
+        if page > otxMaxPages {
+			break
+		}
         page++
     }
     return urls, nil

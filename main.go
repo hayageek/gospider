@@ -35,6 +35,7 @@ func main() {
     commands.Flags().StringP("whitelist-domain", "", "", "Whitelist Domain")
 
     commands.Flags().IntP("threads", "t", 1, "Number of threads (Run sites in parallel)")
+    commands.Flags().IntP("fromYear", "y", 2017, "From Year")    
     commands.Flags().IntP("concurrent", "c", 5, "The number of the maximum allowed concurrent requests of the matching domains")
     commands.Flags().IntP("depth", "d", 1, "MaxDepth limits the recursion depth of visited URLs. (Set it to 0 for infinite recursion)")
     commands.Flags().IntP("delay", "k", 0, "Delay is the duration to wait before creating a new request to the matching domains (second)")
@@ -124,6 +125,7 @@ func run(cmd *cobra.Command, _ []string) {
     }
 
     threads, _ := cmd.Flags().GetInt("threads")
+    fromYear, _ := cmd.Flags().GetInt("fromYear")
     sitemap, _ := cmd.Flags().GetBool("sitemap")
     linkfinder, _ := cmd.Flags().GetBool("js")
     quiet, _ := cmd.Flags().GetBool("quiet")
@@ -179,7 +181,7 @@ func run(cmd *cobra.Command, _ []string) {
                     siteWg.Add(1)
                     go func() {
                         defer siteWg.Done()
-                        urls := core.OtherSources(site.Hostname(), includeSubs)
+                        urls := core.OtherSources(site.Hostname(), includeSubs, fromYear)
                         for _, url := range urls {
                             url = strings.TrimSpace(url)
                             if len(url) == 0 {

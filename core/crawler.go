@@ -18,6 +18,7 @@ import (
     "github.com/spf13/cobra"
 )
 
+var urlCount = 0
 var DefaultHTTPTransport = &http.Transport{
     DialContext: (&net.Dialer{
         Timeout: 10 * time.Second,
@@ -252,7 +253,7 @@ func NewCrawler(site *url.URL, cmd *cobra.Command) *Crawler {
     }
 }
 
-func (crawler *Crawler) Start(linkfinder bool) {
+func (crawler *Crawler) Start(linkfinder bool, maxUrls int) {
     // Setup Link Finder
     if linkfinder {
         crawler.setupLinkFinder()
@@ -330,6 +331,12 @@ func (crawler *Crawler) Start(linkfinder bool) {
                 _ = crawler.LinkFinderCollector.Visit(jsFileUrl)
             }
         }
+    })
+    crawler.C.OnRequest(func(r *colly.Request) {
+        if urlCount >= maxUrls {
+            r.Abort()
+        }
+        urlCount++
     })
 
     crawler.C.OnResponse(func(response *colly.Response) {
